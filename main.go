@@ -5,8 +5,10 @@ import (
 	"embed"
 	"io"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/cors"
@@ -25,6 +27,9 @@ type apiConfig struct {
 var staticFiles embed.FS
 
 func main() {
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}))
 	err := godotenv.Overload(".env")
 	if err != nil {
 		log.Printf("warning: assuming default configuration. .env unreadable: %v", err)
@@ -89,10 +94,12 @@ func main() {
 
 	router.Mount("/v1", v1Router)
 	srv := &http.Server{
-		Addr:    ":" + port,
-		Handler: router,
+		Addr:              ":" + port,
+		Handler:           router,
+		ReadHeaderTimeout: 15 * time.Second,
 	}
 
-	log.Printf("Serving on port: %s\n", port)
+	logger.Info("Serving on port: ", port)
+	// log.Printf("Serving on port: %s\n", port)
 	log.Fatal(srv.ListenAndServe())
 }
